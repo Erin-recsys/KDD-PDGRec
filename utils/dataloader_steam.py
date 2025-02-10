@@ -1,0 +1,811 @@
+import os
+import sys
+from dgl.data.utils import save_graphs
+from tqdm import tqdm
+from scipy import stats
+import pdb
+import torch
+import logging
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+import numpy as np
+import dgl
+from dgl.data import DGLDataset
+import pandas as pd
+from sklearn import preprocessing
+import pickle
+
+import dgl.function as fn
+import pandas as pd
+
+game_num = 7726
+
+class Dataloader_steam_filtered(DGLDataset):
+    def __init__(self, args, path, user_id_path, app_id_path,  genre_path, device = 'cpu', name = 'steam'):
+        
+        logging.info("steam dataloader init...")
+
+        self.args = args
+        self.path = path
+        self.user_id_path = self.path+"/users.txt"
+
+
+        self.app_id_path = self.path+"/app_id.txt"
+
+        self.genre_path = self.path+"/Games_Genres.txt"
+
+
+        self.train_game_path = self.path+"/train_game.txt"
+        self.valid_game_path = self.path+"/valid_data/valid_game.txt"
+        self.test_game_path = self.path+"/test_data/test_game.txt"
+        self.train_time_path = self.path+"/train_time.txt"
+        self.device=device
+        self.graph_path = self.path + "/graph.bin"
+        
+        '''get user id mapping and app id mapping'''
+        logging.info("reading user id mapping:")
+        self.user_id_mapping = self.read_user_id_mapping(self.user_id_path)
+        logging.info("reading app id mapping:")
+        self.app_id_mapping = self.read_app_id_mapping(self.app_id_path)
+        
+        
+
+
+        '''build valid and test data'''
+
+        logging.info("build valid data:")
+        self.valid_data = self.build_valid_data(self.valid_game_path)#字典格式
+        logging.info("build test data:")
+        self.test_data = self.build_test_data(self.test_game_path)
+
+        self.process()
+        dgl.save_graphs(self.graph_path, self.graph)
+
+    def generate_percentile(self, ls):
+        dic = {}
+        for ls_i in ls:
+            if ls_i[1] in dic:
+                dic[ls_i[1]].append(ls_i[2])
+            else:
+                dic[ls_i[1]] = [ls_i[2]]
+
+        for key in tqdm(dic):
+            dic[key] = sorted([time for time in dic[key] if time is not None and time != -1])
+
+        dic_percentile = {}
+        for key in tqdm(dic):
+            dic_percentile[key] = {}
+            length = len(dic[key])
+            for i in range(length):
+                time = dic[key][i]
+                dic_percentile[key][time] = (i + 1) / length
+
+        user_percentiles = {}
+        for ls_i in ls:
+            user, game, time = ls_i[0], ls_i[1], ls_i[2]
+            if time is not None and time != -1:  # 仅处理非 -1 的时间
+                if user not in user_percentiles:
+                    user_percentiles[user] = []
+                user_percentiles[user].append(dic_percentile[game][time])
+        
+        # 计算每个玩家的平均百分比
+        user_mean_percentile = {
+            user: np.mean(percentiles) if percentiles else None
+            for user, percentiles in user_percentiles.items()
+        }
+        
+        # 为交互记录添加百分比，同时处理 -1 值
+        for i in tqdm(range(len(ls))):
+            user, game, time = ls[i][0], ls[i][1], ls[i][2]
+            if time is not None and time != -1:
+                ls[i].append(dic_percentile[game][time])
+            else:
+
+                ls[i].append(user_mean_percentile[user] if user_mean_percentile[user] is not None else 0)
+        
+        return ls
+
+    def read_user_id_mapping(self, path):
+        mapping = {}
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # 获取项目根目录
+        path_user_id_mapping = os.path.join(base_dir, "data_exist/user_id_mapping.pkl")
+        if os.path.exists(path_user_id_mapping):
+            with open(path_user_id_mapping, 'rb') as f:
+                mapping = pickle.load(f)
+
+        else:
+            count = int(0)
+            with open(path,'r') as f:
+                lines = f.readlines()
+                for line in lines:
+                    line = line.strip()
+                    if line not in mapping.keys():
+                        mapping[line] = int(count)
+                        count += 1
+            with open(path_user_id_mapping, 'wb') as f:
+                pickle.dump(mapping, f)
+        return mapping
+
+
+
+    def read_app_id_mapping(self, path):
+        mapping = {}
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path_app_id_mapping = os.path.join(base_dir, "data_exist/app_id_mapping.pkl")
+        if os.path.exists(path_app_id_mapping):
+            with open(path_app_id_mapping, 'rb') as f:
+                mapping = pickle.load(f)
+
+        else:
+            count = int(0)
+            with open(path,'r') as f:
+                lines = f.readlines()
+                for line in lines:
+                    line = line.strip()
+                    if line not in mapping.keys():
+                        mapping[line] = int(count)
+                        count += 1
+            with open(path_app_id_mapping, 'wb') as f:
+                pickle.dump(mapping, f)
+        return mapping
+
+
+    def build_valid_data(self, path):
+        intr = {}
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path_valid_data = os.path.join(base_dir, "data_exist/valid_data.pkl")
+        if os.path.exists(path_valid_data):
+            with open(path_valid_data, 'rb') as f:
+                intr = pickle.load(f)
+        else:
+            with open(path, 'r') as f:
+                lines = f.readlines()
+                for line in tqdm(lines):
+                    line = line.strip().split(',')
+                    '''try:
+                        print(f"当前正在查找的键值: {line[0]}")  # 看看实际在查找什么
+                        print(f"line的完整内容: {line}")  # 看看整行数据是什么
+                        user = self.user_id_mapping[line[0]]
+                    except KeyError as e:
+                        print(f"错误：找不到的键是: {e}")  # 会打印出 "错误：找不到的键是: 'user'"
+                        print(f"line[0]的类型是: {type(line[0])}")  # 检查数据类型'''
+                    user = self.user_id_mapping[line[0]]
+
+                    if user not in intr:
+                        intr[user] = [self.app_id_mapping[game] for game in line[1:]]
+            with open(path_valid_data, 'wb') as f:
+                pickle.dump(intr, f)
+        return intr
+
+
+
+    def build_test_data(self, path):
+        intr = {}
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path_valid_data = os.path.join(base_dir, "data_exist/test_data.pkl")
+        if os.path.exists(path_valid_data):
+            with open(path_valid_data, 'rb') as f:
+                intr = pickle.load(f)
+        else:
+            with open(path, 'r') as f:
+                lines = f.readlines()
+                for line in tqdm(lines):
+                    line = line.strip().split(',')
+                    user = self.user_id_mapping[line[0]]
+                    if user not in intr:
+                        intr[user] = [self.app_id_mapping[game] for game in line[1:]]
+            with open(path_valid_data, 'wb') as f:
+                pickle.dump(intr, f)
+        return intr
+
+
+
+    def read_game_genre_mapping(self, path):
+        mapping = {}
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path_game_type_mapping = os.path.join(base_dir, "data_exist/game_genre_mapping.pkl")
+        if os.path.exists(path_game_type_mapping):
+            with open(path_game_type_mapping, 'rb') as f:
+                mapping = pickle.load(f)
+
+            return mapping
+
+        else:
+            mapping_value2id = {}
+            count = 0
+
+            with open(path, 'r') as f:
+                lines = f.readlines()
+                for line in tqdm(lines):
+                    line = line.strip().split(',')
+
+                    if len(line)>=2 and line[1]!= '' and line[1] not in mapping_value2id:
+                        mapping_value2id[line[1]] = count
+                        count += 1
+
+                for line in tqdm(lines):
+                    line = line.strip().split(',')
+                    if self.app_id_mapping[line[0]] not in mapping.keys() and line[1] != '':
+                        mapping[self.app_id_mapping[line[0]]] = [line[1]]
+                    elif self.app_id_mapping[line[0]] in mapping.keys() and line[1] != '':
+                        mapping[self.app_id_mapping[line[0]]].append(line[1])
+
+
+                for key in tqdm(mapping):
+                    mapping[key] = [mapping_value2id[x] for x in mapping[key]]
+
+                mapping_sort = {}
+                for key in range(game_num):
+                    if key not in mapping.keys():
+                        mapping_sort[key] = []#可以防止有些键在原始 mapping 中缺失
+                    else:
+                        mapping_sort[key] = mapping[key]
+
+                with open(path_game_type_mapping, 'wb') as f:
+                    pickle.dump(mapping_sort, f)  #这里没看懂什么用
+
+            return mapping#字典{游戏映射id:体裁整数id}
+
+
+
+    def read_game_dev_mapping(self, path):
+        mapping = {}
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path_game_type_mapping = os.path.join(base_dir, "data_exist/game_dev_mapping.pkl")
+        if os.path.exists(path_game_type_mapping):
+            with open(path_game_type_mapping, 'rb') as f:
+                mapping = pickle.load(f)
+
+            return mapping
+
+        else:
+            mapping_value2id = {}
+            count = 0
+
+            with open(path, 'r') as f:
+                lines = f.readlines()
+                for line in tqdm(lines):
+                    line = line.strip().split(',')
+
+                    if len(line)>=2 and line[1]!= '' and line[1] not in mapping_value2id:
+                        mapping_value2id[line[1]] = count
+                        count += 1
+
+                for line in tqdm(lines):
+                    line = line.strip().split(',')
+                    if self.app_id_mapping[line[0]] not in mapping.keys() and line[1] != '':
+                        mapping[self.app_id_mapping[line[0]]] = [line[1]]
+                    elif self.app_id_mapping[line[0]] in mapping.keys() and line[1] != '':
+                        mapping[self.app_id_mapping[line[0]]].append(line[1])
+
+
+                for key in tqdm(mapping):
+                    mapping[key] = [mapping_value2id[x] for x in mapping[key]]
+
+                mapping_sort = {}
+                for key in range(len(lines)):
+                    if key not in mapping.keys():
+                        mapping_sort[key] = []
+                    else:
+                        mapping_sort[key] = mapping[key]
+
+                with open(path_game_type_mapping, 'wb') as f:
+                    pickle.dump(mapping_sort, f)
+
+
+            return mapping_sort
+
+
+    def read_game_pub_mapping(self, path):
+        mapping = {}
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path_game_type_mapping = os.path.join(base_dir, "data_exist/game_pub_mapping.pkl")
+        if os.path.exists(path_game_type_mapping):
+            with open(path_game_type_mapping, 'rb') as f:
+                mapping = pickle.load(f)
+
+            return mapping
+
+        else:
+            mapping_value2id = {}
+            count = 0
+
+            with open(path, 'r') as f:
+                lines = f.readlines()
+                for line in tqdm(lines):
+                    line = line.strip().split(',')
+
+                    if len(line)>=2 and line[1]!= '' and line[1] not in mapping_value2id:
+                        mapping_value2id[line[1]] = count
+                        count += 1
+
+                for line in tqdm(lines):
+                    line = line.strip().split(',')
+                    if self.app_id_mapping[line[0]] not in mapping.keys() and line[1] != '':
+                        mapping[self.app_id_mapping[line[0]]] = [line[1]]
+                    elif self.app_id_mapping[line[0]] in mapping.keys() and line[1] != '':
+                        mapping[self.app_id_mapping[line[0]]].append(line[1])
+
+
+                for key in tqdm(mapping):
+                    mapping[key] = [mapping_value2id[x] for x in mapping[key]]
+
+                mapping_sort = {}
+                for key in range(len(lines)):
+                    if key not in mapping.keys():
+                        mapping_sort[key] = []
+                    else:
+                        mapping_sort[key] = mapping[key]
+
+                with open(path_game_type_mapping, 'wb') as f:
+                    pickle.dump(mapping_sort, f)
+
+
+            return mapping_sort
+
+
+    def read_play_time_rank(self, game_path, time_path):  # (self.train_game_path, self.train_time_path)
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(base_dir, "data_exist")
+        path_tensor = path + "/tensor_user_game.pth"
+        path_dic = path + "/dic_user_game.pkl"
+
+        if os.path.exists(path_tensor) and os.path.exists(path_dic):
+            tensor_user_game = torch.load(path_tensor)
+            with open(path_dic, "rb") as f:
+                dic_user_game = pickle.load(f)
+            return tensor_user_game, dic_user_game
+
+        else:
+            ls = []
+            dic_game = {}
+            with open(game_path, 'r') as f_game:
+                with open(time_path, 'r') as f_time:
+                    lines_game = f_game.readlines()
+                    lines_time = f_time.readlines()
+                    for i in tqdm(range(len(lines_game))):
+                        line_game = lines_game[i].strip().split(',')
+                        line_time = lines_time[i].strip().split(',')
+                        user = self.user_id_mapping[line_game[0]]
+
+                        if user not in dic_game:
+                            dic_game[user] = []
+
+                        idx_time_filtered = [j for j in range(1, len(line_time)) if line_time[j] != r'\N']
+                        line_time_filtered = [float(line_time[j]) for j in idx_time_filtered]
+
+                        if len(line_time_filtered) > 0:
+                            ar_time = np.array(line_time_filtered)
+                            time_mean = np.mean(ar_time)
+                        else:
+                            continue
+
+                        for j in range(1, len(line_game)):
+                            game = self.app_id_mapping[line_game[j]]
+                            dic_game[user].append(game)
+
+                            if line_time[j] == r'\N':
+                                ls.append([user, game, None])
+                                continue
+
+                            time = float(line_time[j])
+                            ls.append([user, game, time])
+
+
+            with open(path_dic, 'wb') as f:
+                pickle.dump(dic_game, f)
+
+            percentile_ls = self.generate_percentile(ls)
+            for record in percentile_ls:
+                if record[2] is None:
+                    record[2] = -1
+
+            tensor = torch.tensor(percentile_ls, dtype=torch.float)
+            torch.save(tensor, path_tensor)
+            return tensor, dic_game
+
+
+    def get_time_score(self, tensor):
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(base_dir, "data_exist/dic_gametime.pkl")
+        if not os.path.exists(path):
+            dic = {}
+            logging.info("reading time score...")
+            for game in tqdm(self.app_id_mapping.values()):
+                mask = (tensor[:,1]==game)
+                time = tensor[mask,2]
+                dic[game] = time
+            self.dic_gametime = dic
+            with open(path, 'wb') as f:
+                pickle.dump(dic,f)
+
+
+        logging.info("reading time sigmoid score...")
+        for game in tqdm(self.app_id_mapping.values()):
+
+            mask = (tensor[:,1]==game)
+            tensor[mask,2] = torch.tensor(self.dic_gametime[game])
+
+        return tensor
+
+    def game_genre_inter(self, mapping):
+        game_type_inter = []
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path_game_genre_inter = os.path.join(base_dir, "data_exist/game_genre_inter.pkl")
+        if os.path.exists(path_game_genre_inter):
+            with open(path_game_genre_inter, 'rb') as f:
+                game_type_inter = pickle.load(f)
+        else:
+            for key in tqdm(list(mapping.keys())):
+                for type_key in mapping[key]:
+                    game_type_inter.append([key,type_key])
+
+            with open(path_game_genre_inter, 'wb') as f:
+                pickle.dump(game_type_inter, f)
+
+        return game_type_inter
+
+
+    def game_dev_inter(self, mapping):
+        game_type_inter = []
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path_game_genre_inter = os.path.join(base_dir, "data_exist/game_dev_inter.pkl")
+        if os.path.exists(path_game_genre_inter):
+            with open(path_game_genre_inter, 'rb') as f:
+                game_type_inter = pickle.load(f)
+        else:
+            for key in tqdm(list(mapping.keys())):
+                for type_key in mapping[key]:
+                    game_type_inter.append([key,type_key])
+
+            with open(path_game_genre_inter, 'wb') as f:
+                pickle.dump(game_type_inter, f)
+
+        return game_type_inter
+
+    def game_pub_inter(self, mapping):#同上
+        game_type_inter = []
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path_game_genre_inter = os.path.join(base_dir, "data_exist/game_pub_inter.pkl")
+        if os.path.exists(path_game_genre_inter):
+            with open(path_game_genre_inter, 'rb') as f:
+                game_type_inter = pickle.load(f)
+        else:
+            for key in tqdm(list(mapping.keys())):
+                for type_key in mapping[key]:
+                    game_type_inter.append([key,type_key])
+
+            with open(path_game_genre_inter, 'wb') as f:
+                pickle.dump(game_type_inter, f)
+
+        return game_type_inter
+
+
+    def read_app_info(self, path):
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path_dic = os.path.join(base_dir, "data_exist/dic_app_info.pkl")
+        if os.path.exists(path_dic):
+            with open(path_dic, 'rb') as f:
+                dic = pickle.load(f)
+            return dic
+        else:
+            df = pd.read_csv(path, header=None)
+            games = np.array(list(df.iloc[:,0])).reshape(-1,1)
+            prices = np.array(list(df.iloc[:,3]))
+            prices_mean = prices.mean()
+            prices = prices.reshape(-1,1)
+
+
+            dates = df.iloc[:,4]
+            dates = np.array(list(pd.to_datetime(dates).astype('int64')))
+            dates_mean = dates.mean()
+            dates = (dates.astype(float)/dates.max()).reshape(-1,1)
+            
+            ratings = df.iloc[:,-3].replace(-1,np.nan)
+            ratings_mean = ratings.mean()
+            ratings = ratings.fillna(ratings_mean).values/100
+            ratings = ratings.reshape(-1,1)
+
+
+            app_info = np.hstack((prices,dates,ratings))
+            dic = {}
+            for i in range(len(games)):
+                dic[self.app_id_mapping[str(games[i][0])]] = app_info[i]
+
+            for game in self.app_id_mapping.keys():
+                if game not in games:
+                    dic[self.app_id_mapping[game]] = np.array([prices_mean, dates_mean, ratings_mean])
+
+
+            with open(path_dic,'wb') as f:
+                pickle.dump(dic,f)
+            return dic
+
+    def Get_Contrast_views(self, graph):
+
+        save_dir = '/home/zhangjingmao/data/PDGRec/data_exist'
+        contrast_graph_path = os.path.join(save_dir, f"contrast_graph.bin")
+
+        if os.path.exists(contrast_graph_path):
+            try:
+                contrast_graph, _ = dgl.load_graphs(contrast_graph_path)
+                logging.info(f"Loaded existing contrast graph from {contrast_graph_path}")
+                return contrast_graph[0]
+            except Exception as e:
+                logging.warning(f"Failed to load existing graph: {e}. Rebuilding graph...")
+        
+        torch.cuda.empty_cache()
+        device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+        contrast_graph = graph.clone()
+        contrast_graph = contrast_graph.to(device)
+        
+        src = contrast_graph.edges(etype='play')[0].to(device)
+        dst = contrast_graph.edges(etype='play')[1].to(device)
+        times = contrast_graph.edges['play'].data['percentile'].to(device).float()
+        
+        num_edges = contrast_graph.num_edges('play')
+        contrast_graph.edges['play'].data['noisy'] = torch.zeros(num_edges, dtype=torch.bool, device=device)
+        contrast_graph.edges['played by'].data['noisy'] = torch.zeros(num_edges, dtype=torch.bool, device=device)
+        
+        unique_users = torch.unique(src).to(device)
+        batch_size = 1024
+
+        a = 0.3
+        b = 0.4
+        c = 0.3  # skewness
+        
+        logging.info(f"Processing {len(unique_users)} users")
+        
+        for i in tqdm(range(0, len(unique_users), batch_size)):
+            batch_users = unique_users[i:i+batch_size]
+            
+            batch_mask = torch.isin(src, batch_users)
+            batch_src = src[batch_mask]
+            batch_dst = dst[batch_mask]
+            batch_times = times[batch_mask]
+            
+            user_masks = (batch_src.unsqueeze(1) == batch_users.unsqueeze(0))
+            user_game_counts = user_masks.sum(0)
+            valid_users = user_game_counts >= 3
+            
+            if not valid_users.any():
+                continue
+
+            means = torch.zeros(len(batch_users), dtype=torch.float32, device=device)
+            stds = torch.zeros(len(batch_users), dtype=torch.float32, device=device)
+            skewness = torch.zeros(len(batch_users), dtype=torch.float32, device=device)
+            
+            valid_user_masks = user_masks[:, valid_users]
+            valid_times = batch_times.unsqueeze(1).expand(-1, valid_user_masks.size(1))
+
+            means[valid_users] = ((valid_times * valid_user_masks).sum(0) / 
+                                valid_user_masks.sum(0).float())
+
+            diff_squared = ((valid_times - means[valid_users]) ** 2) * valid_user_masks
+            stds[valid_users] = torch.sqrt(diff_squared.sum(0) / valid_user_masks.sum(0).float())
+            
+            valid_std = stds > 0
+            if not valid_std.any():
+                continue
+
+            valid_diff = (valid_times - means[valid_users]) / stds[valid_users]
+            n = valid_user_masks.sum(0).float()
+            skewness[valid_users] = (n / ((n-1)*(n-2))) * ((valid_diff ** 3) * valid_user_masks).sum(0)
+
+            first_term = 1 - valid_times
+
+            ranks = len(valid_times) - torch.argsort(torch.argsort(valid_times, dim=0), dim=0)
+            normalized_ranks = (ranks - 1).float() / (len(valid_times) - 1)
+
+            min_skew = -4.0092
+            max_skew = 2.7554
+            normalized_skewness = 1 - (skewness[valid_users] - min_skew) / (max_skew - min_skew)
+            normalized_skewness = normalized_skewness.unsqueeze(0).expand(valid_times.size(0), -1)
+
+            probs = (a * first_term + 
+                    b * normalized_ranks + 
+                    c * normalized_skewness) * valid_user_masks
+
+            noise_mask = (probs >= 0.4) & valid_user_masks
+            if noise_mask.any():
+                edge_indices = torch.nonzero(batch_mask)[noise_mask.any(1)]
+                contrast_graph.edges['play'].data['noisy'][edge_indices] = True
+                contrast_graph.edges['played by'].data['noisy'][edge_indices] = True
+
+        noise_edges_play = torch.nonzero(contrast_graph.edges['play'].data['noisy']).squeeze()
+        noise_edges_played_by = torch.nonzero(contrast_graph.edges['played by'].data['noisy']).squeeze()
+        
+        if len(noise_edges_play.shape) > 0:
+            contrast_graph.remove_edges(noise_edges_play, etype='play')
+            logging.info(f"Removed {len(noise_edges_play)} play edges")
+        
+        if len(noise_edges_played_by.shape) > 0:
+            contrast_graph.remove_edges(noise_edges_played_by, etype='played by')
+            logging.info(f"Removed {len(noise_edges_played_by)} played by edges")
+
+        try:
+            os.makedirs(save_dir, exist_ok=True)
+            contrast_graph = contrast_graph.cpu()
+            dgl.save_graphs(contrast_graph_path, [contrast_graph])
+            logging.info(f"Successfully saved contrast graph to {contrast_graph_path}")
+            contrast_graph = contrast_graph.to(device)
+        except Exception as e:
+            logging.error(f"Failed to save contrast graph: {e}")
+            if isinstance(e, PermissionError):
+                logging.error(f"Permission denied. Please check if you have write access to {save_dir}")
+        finally:
+            torch.cuda.empty_cache()
+        
+        return contrast_graph
+
+    def calculate_user_genre_noise_and_weights(self, original_graph, contrast_graph, genre_mapping, device):
+        print(f"\nChecking devices:")
+        print(f"Original graph device: {original_graph.device}")
+        print(f"Contrast graph device: {contrast_graph.device}")
+
+        weighted_orig_graph = original_graph.clone().to(device)
+        weighted_contrast_graph = contrast_graph.clone().to(device)
+        original_graph = original_graph.to(device)
+        contrast_graph = contrast_graph.to(device)
+
+        orig_src, orig_dst = original_graph.edges(etype='play')
+        contrast_src, contrast_dst = contrast_graph.edges(etype='play')
+
+        orig_edges = torch.stack([orig_src, orig_dst])
+        contrast_edges = torch.stack([contrast_src, contrast_dst])
+
+        game_to_genres = {}
+        for game, genres in genre_mapping.items():
+            game_id = int(game)
+            game_to_genres[game_id] = torch.tensor(list(genres), device=device)
+
+        unique_users = torch.unique(orig_src)
+        user_genre_stats = {}
+
+        num_edges = original_graph.num_edges('play')
+        edge_weights = torch.ones(num_edges, device=device)
+        
+        print("\nProcessing users and calculating weights...")
+        for user in tqdm(unique_users.tolist()):
+            user_mask = (orig_src == user)
+            user_games = orig_dst[user_mask]
+            user_edge_indices = torch.nonzero(user_mask).squeeze()
+
+            user_noise_mask = (contrast_src == user)
+            user_contrast_games = contrast_dst[user_noise_mask]
+
+            user_games_set = set(user_games.tolist())
+            user_contrast_games_set = set(user_contrast_games.tolist())
+            noise_games = user_games_set - user_contrast_games_set
+
+            genre_stats = {}
+
+            for idx, game in enumerate(user_games.tolist()):
+                if game in genre_mapping:
+                    genres = genre_mapping[game]
+                    game_genre_weights = []
+                    
+                    for genre in genres:
+                        if genre not in genre_stats:
+                            genre_stats[genre] = {'total': 0, 'noise': 0}
+                        genre_stats[genre]['total'] += 1
+                        
+                        if game in noise_games:
+                            genre_stats[genre]['noise'] += 1
+
+            user_noise_ratios = {}
+            for genre, stats in genre_stats.items():
+                if stats['total'] > 0:
+                    noise_ratio = stats['noise'] / stats['total']
+                    user_noise_ratios[genre] = noise_ratio
+            
+            user_genre_stats[user] = user_noise_ratios
+
+            for edge_idx, game in zip(user_edge_indices.tolist(), user_games.tolist()):
+                if game in genre_mapping:
+                    genres = genre_mapping[game]
+                    genre_weights = []
+                    for genre in genres:
+                        if genre in user_noise_ratios:
+
+                            weight = 1.0 - user_noise_ratios[genre]
+                            genre_weights.append(weight)
+                    
+                    if genre_weights:
+                        edge_weights[edge_idx] = sum(genre_weights) / len(genre_weights)
+
+            if len(user_genre_stats) % 1000 == 0:
+                torch.cuda.empty_cache()
+
+        weighted_orig_graph.edges['play'].data['weight'] = edge_weights
+        weighted_orig_graph.edges['played by'].data['weight'] = edge_weights
+
+        contrast_edge_mask = torch.zeros(num_edges, dtype=torch.bool, device=device)
+        contrast_edges_set = set(zip(contrast_src.tolist(), contrast_dst.tolist()))
+        orig_edges_list = list(zip(orig_src.tolist(), orig_dst.tolist()))
+        
+        for i, edge in enumerate(orig_edges_list):
+            if edge in contrast_edges_set:
+                contrast_edge_mask[i] = True
+        
+        contrast_weights = edge_weights[contrast_edge_mask]
+        weighted_contrast_graph.edges['play'].data['weight'] = contrast_weights
+        weighted_contrast_graph.edges['played by'].data['weight'] = contrast_weights
+
+        print("\nSaving weighted graphs...")
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        cur_path = os.path.normpath(os.path.join(current_dir, '..', 'data_exist'))
+
+        orig_graph_path = os.path.join(cur_path, "graph_weighted_genre_original.bin")
+        dgl.save_graphs(orig_graph_path, [weighted_orig_graph.cpu()])
+        print(f"Original weighted graph saved to: {orig_graph_path}")
+
+        contrast_graph_path = os.path.join(cur_path, "graph_weighted_genre_denoised.bin")
+        dgl.save_graphs(contrast_graph_path, [weighted_contrast_graph.cpu()])
+        print(f"Denoised weighted graph saved to: {contrast_graph_path}")
+
+        print("\nOriginal graph weight statistics:")
+        print(f"Min weight: {edge_weights.min().item():.3f}")
+        print(f"Max weight: {edge_weights.max().item():.3f}")
+        print(f"Mean weight: {edge_weights.mean().item():.3f}")
+        
+        print("\nDenoised graph weight statistics:")
+        print(f"Min weight: {contrast_weights.min().item():.3f}")
+        print(f"Max weight: {contrast_weights.max().item():.3f}")
+        print(f"Mean weight: {contrast_weights.mean().item():.3f}")
+        
+        print("\nFinal GPU memory state:")
+        print(f"GPU memory allocated: {torch.cuda.memory_allocated(device)/1024**2:.2f} MB")
+        print(f"GPU memory cached: {torch.cuda.memory_reserved(device)/1024**2:.2f} MB")
+        
+        return user_genre_stats, weighted_orig_graph, weighted_contrast_graph
+
+
+    def process(self):
+        logging.info("reading genre,developer,publisher info...")
+        self.genre_mapping = self.read_game_genre_mapping(self.genre_path)
+        self.genre = self.game_genre_inter(self.genre_mapping)
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        logging.info("reading user item play time...")
+        self.user_game, self.dic_user_game = self.read_play_time_rank(self.train_game_path, self.train_time_path)
+
+        if os.path.exists(os.path.join(base_dir, "data_exist/graph.bin")):
+            graph,_ = dgl.load_graphs(os.path.join(base_dir, "data_exist/graph.bin"))
+            graph = graph[0]
+            self.graph = graph
+            
+        else:
+            graph_data = {
+                #('user', 'friend of', 'user'): (self.friends[:, 0], self.friends[:, 1]),
+
+                #('game', 'developed by', 'developer'): (torch.tensor(self.developer)[:,0], torch.tensor(self.developer)[:,1]),
+
+                #('developer', 'develop', 'game'): (torch.tensor(self.developer)[:,1], torch.tensor(self.developer)[:,0]),
+
+                #('game', 'published by', 'publisher'):(torch.tensor(self.publisher)[:,0], torch.tensor(self.publisher)[:,1]),
+
+                #('publisher', 'publish', 'game'): (torch.tensor(self.publisher)[:,1], torch.tensor(self.publisher)[:,0]),
+
+                ('game', 'genre', 'type'): (torch.tensor(self.genre)[:,0], torch.tensor(self.genre)[:,1]),
+
+                ('type', 'genred', 'game'): (torch.tensor(self.genre)[:,1], torch.tensor(self.genre)[:,0]),
+
+                ('user', 'play', 'game'): (self.user_game[:, 0].long(), self.user_game[:, 1].long()),
+
+                ('game', 'played by', 'user'): (self.user_game[:, 1].long(), self.user_game[:, 0].long())
+            }
+            graph = dgl.heterograph(graph_data)
+            graph.edges['play'].data['time'] = self.user_game[:, 2].to(torch.float32)
+            graph.edges['played by'].data['time'] = self.user_game[:, 2].to(torch.float32)
+            graph.edges['play'].data['percentile'] = self.user_game[:, 3]
+            graph.edges['played by'].data['percentile'] = self.user_game[:, 3]
+            self.graph = graph
+            dgl.save_graphs(os.path.join(base_dir, "data_exist/graph.bin"),[graph])
+
+
+
+
+    def __getitem__(self, i):
+        pass
+
+    def __len__(self):
+        pass
