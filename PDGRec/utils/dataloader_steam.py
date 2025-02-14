@@ -82,18 +82,16 @@ class Dataloader_steam_filtered(DGLDataset):
         user_percentiles = {}
         for ls_i in ls:
             user, game, time = ls_i[0], ls_i[1], ls_i[2]
-            if time is not None and time != -1:  # 仅处理非 -1 的时间
+            if time is not None and time != -1: 
                 if user not in user_percentiles:
                     user_percentiles[user] = []
                 user_percentiles[user].append(dic_percentile[game][time])
-        
-        # 计算每个玩家的平均百分比
+  
         user_mean_percentile = {
             user: np.mean(percentiles) if percentiles else None
             for user, percentiles in user_percentiles.items()
         }
-        
-        # 为交互记录添加百分比，同时处理 -1 值
+
         for i in tqdm(range(len(ls))):
             user, game, time = ls[i][0], ls[i][1], ls[i][2]
             if time is not None and time != -1:
@@ -106,7 +104,7 @@ class Dataloader_steam_filtered(DGLDataset):
 
     def read_user_id_mapping(self, path):
         mapping = {}
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # 获取项目根目录
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         path_user_id_mapping = os.path.join(base_dir, "data_exist/user_id_mapping.pkl")
         if os.path.exists(path_user_id_mapping):
             with open(path_user_id_mapping, 'rb') as f:
@@ -161,13 +159,6 @@ class Dataloader_steam_filtered(DGLDataset):
                 lines = f.readlines()
                 for line in tqdm(lines):
                     line = line.strip().split(',')
-                    '''try:
-                        print(f"当前正在查找的键值: {line[0]}")  # 看看实际在查找什么
-                        print(f"line的完整内容: {line}")  # 看看整行数据是什么
-                        user = self.user_id_mapping[line[0]]
-                    except KeyError as e:
-                        print(f"错误：找不到的键是: {e}")  # 会打印出 "错误：找不到的键是: 'user'"
-                        print(f"line[0]的类型是: {type(line[0])}")  # 检查数据类型'''
                     user = self.user_id_mapping[line[0]]
 
                     if user not in intr:
@@ -236,14 +227,14 @@ class Dataloader_steam_filtered(DGLDataset):
                 mapping_sort = {}
                 for key in range(game_num):
                     if key not in mapping.keys():
-                        mapping_sort[key] = []#可以防止有些键在原始 mapping 中缺失
+                        mapping_sort[key] = []
                     else:
                         mapping_sort[key] = mapping[key]
 
                 with open(path_game_type_mapping, 'wb') as f:
-                    pickle.dump(mapping_sort, f)  #这里没看懂什么用
+                    pickle.dump(mapping_sort, f)
 
-            return mapping#字典{游戏映射id:体裁整数id}
+            return mapping
 
 
 
