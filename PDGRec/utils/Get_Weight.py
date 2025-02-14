@@ -3,7 +3,7 @@ import torch
 
 def get_weight(fixed_value):
     print("Processing original graph...")
-    path = "/home/zhangjingmao/data/PDGRec/data_exist/graph.bin"
+    path = "/PDGRec/data_exist/graph.bin"
     graph = dgl.load_graphs(path)[0]
     graph = graph[0]
 
@@ -14,20 +14,20 @@ def get_weight(fixed_value):
     friend_of_weights_CI = graph.edges['friend of'].data['CI']
 
     print("\nLoading graph with noise weights...")
-    noise_path = "/home/zhangjingmao/data/PDGRec/data_exist/graph_with_weights.bin"
+    noise_path = "/PDGRec/data_exist/graph_with_weights.bin"
     noise_graph = dgl.load_graphs(noise_path)[0]
     noise_graph = noise_graph[0]
 
     noise_weights = 1- noise_graph.edges['play'].data['noise_weight']
 
-    save_path = "/home/zhangjingmao/data/PDGRec/data_exist/"
+    save_path = "/PDGRec/data_exist/"
     torch.save(edge_weights, save_path + "weight_edge.pth")
     torch.save(friend_of_weights_DI, save_path + "weight_friend_of_edge_DI.pth")
     torch.save(friend_of_weights_CI, save_path + "weight_friend_of_edge_CI.pth")
     torch.save(noise_weights, save_path + "weight_noise_edge.pth")
 
     print("\nProcessing contrast graph...")
-    path = "/home/zhangjingmao/data/PDGRec/data_exist/contrast_graph.bin"
+    path = "/PDGRec/data_exist/contrast_graph.bin"
     graph = dgl.load_graphs(path)[0]
 
     print("Contrast graph edge types:", graph.etypes)
@@ -40,7 +40,7 @@ def get_weight(fixed_value):
     csr_friend_of_weights_CI = graph.edges['friend of'].data['CI']
 
     print("\nLoading contrast graph with noise weights...")
-    csr_noise_path = "/home/zhangjingmao/data/PDGRec/data_exist/contrast_graph_with_weights.bin"
+    csr_noise_path = "/PDGRec/data_exist/contrast_graph_with_weights.bin"
     csr_noise_graph = dgl.load_graphs(csr_noise_path)[0]
     csr_noise_graph = csr_noise_graph[0]
 
