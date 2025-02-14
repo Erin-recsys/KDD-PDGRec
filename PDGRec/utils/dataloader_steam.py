@@ -513,7 +513,7 @@ class Dataloader_steam_filtered(DGLDataset):
 
     def Get_Contrast_views(self, graph):
 
-        save_dir = '/home/zhangjingmao/data/PDGRec/data_exist'
+        save_dir = '/PDGRec/data_exist'
         contrast_graph_path = os.path.join(save_dir, f"contrast_graph.bin")
 
         if os.path.exists(contrast_graph_path):
