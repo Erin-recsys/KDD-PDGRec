@@ -16,7 +16,7 @@ else:
 
 args = parse_args()
 
-path = "/home/zhangjingmao/data/PDGRec/steam_data"
+path = "/PDGRec/steam_data"
 
 user_id_path = path + '/users.txt'
 app_id_path = path + '/app_id.txt'
@@ -42,7 +42,7 @@ denoised_graph = dataloader.Get_Contrast_views(dataloader.graph)
 
 a,b,c=dataloader.calculate_user_genre_noise_and_weights(dataloader.graph,denoised_graph,dataloader.genre_mapping,device)
 print(b)
-output_path = "/home/zhangjingmao/data/PDGRec/user_genre_noise_readable.txt"
+output_path = "/PDGRec/user_genre_noise_readable.txt"
 
 with open(output_path, 'w') as f:
     for user_id, genre_stats in a.items():
@@ -57,43 +57,3 @@ genre_noise_ratios = dataloader.calculate_noise_ratios(
     denoised_graph,
 
 )'''
-
-'''print("Creating weighted graph...")
-weighted_graph = dataloader.create_weighted_graph(
-    denoised_graph,
-    rg_weight
-)
-
-print("Process completed successfully!")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-'''except RuntimeError as e:
-    if "out of memory" in str(e):
-        print(f"GPU内存使用情况: {torch.cuda.memory_allocated(0)/1024**2:.2f} MB")
-        torch.cuda.empty_cache()  # 清理GPU缓存
-        print("GPU内存不足，请尝试减小batch size或使用CPU")
-    else:
-        print(f"运行时错误: {str(e)}")
-except Exception as e:
-    print(f"发生错误: {str(e)}")
-finally:
-    # 清理内存
-    torch.cuda.empty_cache()'''
