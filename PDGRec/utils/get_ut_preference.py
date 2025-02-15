@@ -5,7 +5,7 @@ import os
 import logging
 import numpy as np
 
-base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # 获取项目根目录
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  
 path = os.path.join(base_dir, "data_exist")
 user_num = 60742
 game_num = 7726
@@ -16,7 +16,7 @@ def get_ut_preference():
     path_dic = path+"/dic_user_game.pkl"
     logging.info('111')
 
-    # 加载user_game信息
+    
     if os.path.exists(path_tensor) and os.path.exists(path_dic):
         tensor_user_game = torch.load(path_tensor)
         with open(path_dic,"rb") as f:
@@ -28,7 +28,7 @@ def get_ut_preference():
         
     user_game = tensor_user_game.numpy()
 
-    # 加载game_type信息
+   
     path_game_genre_mapping = os.path.join(base_dir, "data_exist/game_genre_mapping.pkl")
     if os.path.exists(path_game_genre_mapping):
         with open(path_game_genre_mapping, 'rb') as f:
