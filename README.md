@@ -19,4 +19,5 @@ Ensure the following dependencies are installed:
 - Other required libraries
 
 ## Run the preprocessing script
-python main.py
+- To get social score: python PDGRec/utils/cal_social_score.py
+- To train the model: python main.py
