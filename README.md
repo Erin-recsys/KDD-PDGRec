@@ -19,12 +19,22 @@ Ensure the following dependencies are installed:
 - Other required libraries
 
 ## Run the preprocessing script
-- To get social score:
-  python PDGRec/utils/get_ut_preference.py
-  python PDGRec/utils/get_weight.py
-  python PDGRec/utils/cal_social_score.py
-- To get denoised graph and calculate noise, CI and DI weights:
-  python Get_contrast.py
-  python Get_noise_weight.py
-  python Get_Weight.py
-- To train the model: python main.py
+1. Get social score
+```bash
+python PDGRec/utils/get_ut_preference.py
+python PDGRec/utils/get_weight.py
+python PDGRec/utils/cal_social_score.py
+```
+
+2. Get denoised graph and calculate noise, CI and DI weights 
+```bash
+python Get_contrast.py
+python Get_noise_weight.py
+python Get_Weight.py 
+```
+
+### Model Training
+
+```bash
+python main.py
+```
