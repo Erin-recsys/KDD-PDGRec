@@ -23,4 +23,8 @@ Ensure the following dependencies are installed:
   python PDGRec/utils/get_ut_preference.py
   python PDGRec/utils/get_weight.py
   python PDGRec/utils/cal_social_score.py
+- To get denoised graph and calculate noise, CI and DI weights:
+  python Get_contrast.py
+  python Get_noise_weight.py
+  python Get_Weight.py
 - To train the model: python main.py
