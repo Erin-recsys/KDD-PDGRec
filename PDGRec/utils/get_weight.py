@@ -4,7 +4,7 @@ import os
 import logging
 import numpy as np
 
-base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # 获取项目根目录
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  
 data_path = os.path.join(base_dir, "data_exist")
 user_num = 60742
 game_num = 7726
