@@ -807,16 +807,16 @@ class Dataloader_steam_filtered(DGLDataset):
         user_num = 60742
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         data_path = os.path.join(base_dir, "data_exist/social_score_wi_ci_0.75/")
-        result_path = os.path.join(data_path, 'social_score_30.pkl')
+        result_path = os.path.join(data_path, 'social_score_20.pkl')
 
         if os.path.exists(result_path):
             logging.info("reading social score matrix...")
             with open(result_path, 'rb') as f:
                 mat = pickle.load(f)
             # print(mat[0])
-            ci_tensor = torch.tensor(mat)
+            i_tensor = torch.tensor(mat)
             # print(tensor[:,0])
-            return ci_tensor
+            return i_tensor
 
         # if os.path.exists(di_path):
         #     logging.info("reading social score matrix...")
@@ -846,7 +846,7 @@ class Dataloader_steam_filtered(DGLDataset):
             
         else:
             graph_data = {
-                ('user', 'friend', 'user'): (self.social_score[:, 0].long(), self.social_score[:, 1].long()),
+                ('user', 'friend of', 'user'): (self.social_score[:, 0].long(), self.social_score[:, 1].long()),
 
                 ('game', 'genre', 'type'): (torch.tensor(self.genre)[:,0], torch.tensor(self.genre)[:,1]),
 
@@ -862,8 +862,8 @@ class Dataloader_steam_filtered(DGLDataset):
       
             graph.edges['play'].data['percentile'] = self.user_game[:, 3]
             graph.edges['played by'].data['percentile'] = self.user_game[:, 3]
-            graph.edges['friend'].data['CI'] = self.social_score[:, 2]
-            graph.edges['friend'].data['DI'] = self.social_score[:, 3]
+            graph.edges['friend of'].data['CI'] = self.social_score[:, 2]
+            graph.edges['friend of'].data['DI'] = self.social_score[:, 3]
             self.graph = graph
             dgl.save_graphs(os.path.join(base_dir, "data_exist/graph.bin"),[graph])
 
