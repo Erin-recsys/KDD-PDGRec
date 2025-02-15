@@ -803,13 +803,38 @@ class Dataloader_steam_filtered(DGLDataset):
         return user_genre_stats, weighted_orig_graph, weighted_contrast_graph
 
 
+    def get_social_score(self):
+        user_num = 60742
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        data_path = os.path.join(base_dir, "data_exist/social_score_wi_ci_0.75/")
+        result_path = os.path.join(data_path, 'social_score_30.pkl')
 
+        if os.path.exists(result_path):
+            logging.info("reading social score matrix...")
+            with open(result_path, 'rb') as f:
+                mat = pickle.load(f)
+            # print(mat[0])
+            ci_tensor = torch.tensor(mat)
+            # print(tensor[:,0])
+            return ci_tensor
+
+        # if os.path.exists(di_path):
+        #     logging.info("reading social score matrix...")
+        #     with open(di_path, 'rb') as f:
+        #         mat = pickle.load(f)
+        #     # print(mat[0])
+        #     di_tensor = torch.tensor(mat)
+        #     return ci_tensor,di_tensor
+        else:
+            return None
 
 
     def process(self):
         logging.info("reading genre,developer,publisher info...")
         self.genre_mapping = self.read_game_genre_mapping(self.genre_path)
         self.genre = self.game_genre_inter(self.genre_mapping)
+        logging.info("reading genre,social score info...")
+        self.social_score = self.get_social_score() 
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) 
         logging.info("reading user item play time...")
         self.user_game, self.dic_user_game = self.read_play_time_rank(self.train_game_path, self.train_time_path)
@@ -821,6 +846,8 @@ class Dataloader_steam_filtered(DGLDataset):
             
         else:
             graph_data = {
+                ('user', 'friend', 'user'): (self.social_score[:, 0].long(), self.social_score[:, 1].long()),
+
                 ('game', 'genre', 'type'): (torch.tensor(self.genre)[:,0], torch.tensor(self.genre)[:,1]),
 
                 ('type', 'genred', 'game'): (torch.tensor(self.genre)[:,1], torch.tensor(self.genre)[:,0]),
@@ -835,6 +862,8 @@ class Dataloader_steam_filtered(DGLDataset):
       
             graph.edges['play'].data['percentile'] = self.user_game[:, 3]
             graph.edges['played by'].data['percentile'] = self.user_game[:, 3]
+            graph.edges['friend'].data['CI'] = self.social_score[:, 2]
+            graph.edges['friend'].data['DI'] = self.social_score[:, 3]
             self.graph = graph
             dgl.save_graphs(os.path.join(base_dir, "data_exist/graph.bin"),[graph])
 
