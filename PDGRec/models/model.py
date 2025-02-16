@@ -29,7 +29,7 @@ class Proposed_model(nn.Module):
         self.hid_dim = args.embed_size  
         self.attention_and = args.attention_and
         self.layer_num_and = args.layers_and
-        self.layer_num_oricsr=3  
+        self.layer_num_oridn=3  
         self.layer_num_or = args.layers_or   
         self.layer_num_user_game = args.layers_user_game
         self.graph_item = graph_item.to(self.device_)
@@ -42,33 +42,33 @@ class Proposed_model(nn.Module):
 
         self.graph_social = graph_social
 
-        path_weight_edge = "/PDGRec/data_exist/weight_edge.pth"
+        path_weight_edge = "./data_exist/weight_edge.pth"
         self.weight_edge = torch.load(path_weight_edge).to(self.device_)
 
-        csr_path_weight_edge = "/PDGRec/data_exist/csr_weight_edge.pth"
-        self.csr_weight_edge = torch.load(csr_path_weight_edge).to(self.device_)
+        dn_path_weight_edge = "./data_exist/dn_weight_edge.pth"
+        self.dn_weight_edge = torch.load(dn_path_weight_edge).to(self.device_)
 
-        path_weight_friend_of_DI = "/PDGRec/data_exist/weight_friend_of_edge_DI.pth"
+        path_weight_friend_of_DI = "./data_exist/weight_friend_of_edge_DI.pth"
         self.weight_friend_of_DI = torch.load(path_weight_friend_of_DI).to(self.device_)
         self.weight_friend_of_DI = self.weight_friend_of_DI.to(torch.float32)
 
-        path_weight_friend_of_CI = "/PDGRec/data_exist/weight_friend_of_edge_CI.pth"
+        path_weight_friend_of_CI = "./data_exist/weight_friend_of_edge_CI.pth"
         self.weight_friend_of_CI = torch.load(path_weight_friend_of_CI).to(self.device_)
         self.weight_friend_of_CI = self.weight_friend_of_CI.to(torch.float32)
 
-        csr_path_weight_friend_of_DI = "/PDGRec/data_exist/csr_weight_friend_of_edge_DI.pth"
-        self.csr_weight_friend_of_DI = torch.load(csr_path_weight_friend_of_DI).to(self.device_)
-        self.csr_weight_friend_of_DI = self.csr_weight_friend_of_DI.to(torch.float32)
+        dn_path_weight_friend_of_DI = "./data_exist/dn_weight_friend_of_edge_DI.pth"
+        self.dn_weight_friend_of_DI = torch.load(dn_path_weight_friend_of_DI).to(self.device_)
+        self.dn_weight_friend_of_DI = self.dn_weight_friend_of_DI.to(torch.float32)
 
-        csr_path_weight_friend_of_CI = "/PDGRec/data_exist/csr_weight_friend_of_edge_CI.pth"
-        self.csr_weight_friend_of_CI = torch.load(csr_path_weight_friend_of_CI).to(torch.float32)
-        self.csr_weight_friend_of_CI = self.csr_weight_friend_of_CI.to(self.device_)
+        dn_path_weight_friend_of_CI = "./data_exist/dn_weight_friend_of_edge_CI.pth"
+        self.dn_weight_friend_of_CI = torch.load(dn_path_weight_friend_of_CI).to(torch.float32)
+        self.dn_weight_friend_of_CI = self.dn_weight_friend_of_CI.to(self.device_)
 
-        path_weight_noise_edge = "/PDGRec/data_exist/weight_noise_edge.pth"
+        path_weight_noise_edge = "./data_exist/weight_noise_edge.pth"
         self.weight_noise_edge = torch.load(path_weight_noise_edge).to(self.device_)
 
-        csr_path_weight_noise_edge = "/PDGRec/data_exist/csr_weight_noise_edge.pth"
-        self.csr_weight_noise_edge = torch.load(csr_path_weight_noise_edge).to(self.device_)
+        dn_path_weight_noise_edge = "./data_exist/dn_weight_noise_edge.pth"
+        self.dn_weight_noise_edge = torch.load(dn_path_weight_noise_edge).to(self.device_)
 
 
         self.edge_node_weight =True
@@ -94,21 +94,21 @@ class Proposed_model(nn.Module):
 
         self.build_model_item(self.graph_item)
         self.build_model_ssl()
-        self.build_model_csr()
+        self.build_model_dn()
 
 
-        contrast_graph_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
-                                         "data_exist/contrast_graph.bin")
+        dn_graph_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
+                                         "data_exist/dn_graph.bin")
 
-        contrast_graph, _ = dgl.load_graphs(contrast_graph_path)
-        self.graph_contrast = contrast_graph[0].to(self.device_)
-        self.graph_contrast = dgl.edge_type_subgraph(self.graph_contrast, [('user','play','game'),('game','played by','user')])
-        print("Successfully loaded contrast graph from file")
+        dn_graph, _ = dgl.load_graphs(dn_graph_path)
+        self.graph_dn = dn_graph[0].to(self.device_)
+        self.graph_dn = dgl.edge_type_subgraph(self.graph_dn, [('user','play','game'),('game','played by','user')])
+        print("Successfully loaded dn graph from file")
 
-        self.graph_item2user_csr = dgl.edge_type_subgraph(self.graph_contrast,['played by']).to(self.device_)
-        self.graph_user2item_csr = dgl.edge_type_subgraph(self.graph_contrast,['play']).to(self.device_)
+        self.graph_item2user_dn = dgl.edge_type_subgraph(self.graph_dn,['played by']).to(self.device_)
+        self.graph_user2item_dn = dgl.edge_type_subgraph(self.graph_dn,['play']).to(self.device_)
 
-        self.graph_social_csr = graph_social
+        self.graph_social_dn = graph_social
     def build_model_item(self, graph_item):
         self.sub_g1 = dgl.edge_type_subgraph(graph_item,['co_genre']).to(self.device_)
 
@@ -126,19 +126,19 @@ class Proposed_model(nn.Module):
                 })
             self.layers.append(layer)
         self.layers.to(self.device_)
-    def build_model_csr(self):
-        self.layers_csr = nn.ModuleList()
+    def build_model_dn(self):
+        self.layers_dn = nn.ModuleList()
         for _ in range(self.layer_num_user_game):
-            layer_csr = 0
+            layer_dn = 0
             if self.edge_node_weight == True:
-                layer_csr = GraphConv(self.hid_dim,self.hid_dim, weight=False, bias=False, allow_zero_in_degree = True)
+                layer_dn = GraphConv(self.hid_dim,self.hid_dim, weight=False, bias=False, allow_zero_in_degree = True)
             else:
-                layer_csr = dgl.nn.HeteroGraphConv({
+                layer_dn = dgl.nn.HeteroGraphConv({
                     'play': GraphConv(self.hid_dim,self.hid_dim, weight=False, bias=False, allow_zero_in_degree = True),
                     'played by': GraphConv(self.hid_dim,self.hid_dim, weight=False, bias=False, allow_zero_in_degree = True)
                 })
-            self.layers_csr.append(layer_csr)
-        self.layers_csr.to(self.device_)
+            self.layers_dn.append(layer_dn)
+        self.layers_dn.to(self.device_)
 
 
 
@@ -154,22 +154,22 @@ class Proposed_model(nn.Module):
                 h_DI = layer(self.graph_social, (h['user'], h['user']),edge_weight=self.weight_friend_of_DI)
                 h_CI = layer(self.graph_social, (h['user'], h['user']),edge_weight=self.weight_friend_of_CI)
 
-                h['user'] = h_user*self.args.weight_self+h_noise*self.args.weight_noise + h_DI*self.args.weight_DI + h_CI*self.args.weight_CI  
+                h['user'] = h_user*self.args.weight_self+self.args.use_other*(h_noise*self.args.weight_noise + h_DI*self.args.weight_DI + h_CI*self.args.weight_CI)  
                 h['game'] = h_item
             else:
                 h = layer(self.graph,h)
         h_sub1 = h
         h1= {'user':self.user_embedding.clone(), 'game':self.item_embedding.clone()}
-        for layer_csr in self.layers_csr:
+        for layer_dn in self.layers_dn:
             if self.edge_node_weight == True:
-                h_user = layer_csr(self.graph_item2user_csr, (h1['game'],h1['user']))
-                h_item = layer_csr(self.graph_user2item_csr, (h1['user'],h1['game']))
-                h_noise=layer_csr(self.graph_item2user_csr, (h1['game'],h1['user']),edge_weight=self.csr_weight_noise_edge)
+                h_user = layer_dn(self.graph_item2user_dn, (h1['game'],h1['user']))
+                h_item = layer_dn(self.graph_user2item_dn, (h1['user'],h1['game']))
+                h_noise=layer_dn(self.graph_item2user_dn, (h1['game'],h1['user']),edge_weight=self.dn_weight_noise_edge)
 
-                h1_DI = layer_csr(self.graph_social_csr, (h1['user'], h1['user']),edge_weight=self.csr_weight_friend_of_DI)
-                h1_CI = layer_csr(self.graph_social_csr, (h1['user'], h1['user']),edge_weight=self.csr_weight_friend_of_CI)
+                h1_DI = layer_dn(self.graph_social_dn, (h1['user'], h1['user']),edge_weight=self.dn_weight_friend_of_DI)
+                h1_CI = layer_dn(self.graph_social_dn, (h1['user'], h1['user']),edge_weight=self.dn_weight_friend_of_CI)
 
-                h1['user'] = h_user*self.args.weight_self+h_noise*self.args.weight_noise + h1_DI*self.args.weight_DI+h1_CI*self.args.weight_CI  
+                h1['user'] = h_user*self.args.weight_self+self.args.use_other*(h_noise*self.args.weight_noise + h1_DI*self.args.weight_DI+h1_CI*self.args.weight_CI)  
                 h1['game'] = h_item
             else:
                 h1 = layer(self.graph,h)
