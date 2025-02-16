@@ -154,7 +154,7 @@ class Proposed_model(nn.Module):
                 h_DI = layer(self.graph_social, (h['user'], h['user']),edge_weight=self.weight_friend_of_DI)
                 h_CI = layer(self.graph_social, (h['user'], h['user']),edge_weight=self.weight_friend_of_CI)
 
-                h['user'] = h_user*self.args.weight_self+h_noise*self.args.weight_noise + h_DI*self.args.weight_DI + h_CI*self.args.weight_CI  # 可以调整权重
+                h['user'] = h_user*self.args.weight_self+h_noise*self.args.weight_noise + h_DI*self.args.weight_DI + h_CI*self.args.weight_CI  
                 h['game'] = h_item
             else:
                 h = layer(self.graph,h)
@@ -169,7 +169,7 @@ class Proposed_model(nn.Module):
                 h1_DI = layer_csr(self.graph_social_csr, (h1['user'], h1['user']),edge_weight=self.csr_weight_friend_of_DI)
                 h1_CI = layer_csr(self.graph_social_csr, (h1['user'], h1['user']),edge_weight=self.csr_weight_friend_of_CI)
 
-                h1['user'] = h_user*self.args.weight_self+h_noise*self.args.weight_noise + h1_DI*self.args.weight_DI+h1_CI*self.args.weight_CI  # 可以调整权重
+                h1['user'] = h_user*self.args.weight_self+h_noise*self.args.weight_noise + h1_DI*self.args.weight_DI+h1_CI*self.args.weight_CI  
                 h1['game'] = h_item
             else:
                 h1 = layer(self.graph,h)
