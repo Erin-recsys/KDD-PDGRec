@@ -30,7 +30,7 @@ Before running, please extract the following files:
 **Option 1: Use Preprocessed Data (Recommended)**  
 - Directly use the extracted `social_score_20.pkl`  
 
-**Option 2: Run Preprocessing Scripts**  
+**Option 2: Run the following scripts to get social_score_20.pkl**  
 ```bash
 python PDGRec/utils/get_ut_preference.py  
 python PDGRec/utils/get_weight.py  
