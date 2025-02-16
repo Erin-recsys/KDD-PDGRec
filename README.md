@@ -23,7 +23,7 @@ Ensure the following dependencies are installed:
 Before running, please extract the following files:  
 
 - `steam_data/user_game.txt.zip`  
-- `data_exist/social_score_wi_ci_0.75/social_score_20.pkl.zip`  
+- `data_exist/social_score_wi_ci_0.75/social_score_20.zip`  
 
 ### 1. Get Social Score  
 
