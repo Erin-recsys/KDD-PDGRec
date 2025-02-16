@@ -35,7 +35,7 @@ python PDGRec/utils/cal_social_score.py
 ```bash
 python PDGRec/utils/Get_contrast.py
 python PDGRec/utils/Get_noise_weight.py
-python PDGRec/utils/Get_Weight.py 
+python PDGRec/utils/Get_CIDI_Weight.py 
 ```
 
 ### Model Training
