@@ -23,8 +23,8 @@ Before running, please extract the following files:
 - steam_data/user_game.txt.zip
 - data_exist/social_score_wi_ci_0.75/social_score_20.pkl.zip
 1. Get Social Score
-- Option 1: Use preprocessed data (Recommended)\n
-  Directly use the extracted social_score_20.pkl
+- Option 1: Use preprocessed data (Recommended)
+- Directly use the extracted social_score_20.pkl
 - Option 2: Run preprocessing scripts 
 ```bash
 python PDGRec/utils/get_ut_preference.py
