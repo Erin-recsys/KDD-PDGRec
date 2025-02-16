@@ -27,7 +27,7 @@ user_type_bool = np.where(user_type_pct_cnt != 0, 1, user_type_pct_cnt)
 def cal_social_score(k:int):
     social_score_mat = []
     path_mat = os.path.join(base_dir, "data_exist/social_score_wi_ci_0.75/social_score_20.pkl")
-    for i in tqdm(user_num):
+    for i in tqdm(range(user_num)):
         user_a_array = user_type_bool[i]
         ci_score = np.zeros(user_num)
         di_score = np.zeros(user_num)
