@@ -39,9 +39,9 @@ python PDGRec/utils/cal_social_score.py
 
 ### 2.Get Denoised Graph and Calculate Weights
 ```bash
-python PDGRec/utils/Get_contrast.py  
+python PDGRec/utils/Get_denoised_graph.py  
 python PDGRec/utils/Get_noise_weight.py  
-python PDGRec/utils/Get_CIDI_Weight.py  
+python PDGRec/utils/Get_CI_DI_Weight.py  
 ```
 ## Model Training
 ```bash
