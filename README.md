@@ -20,7 +20,7 @@ Ensure the following dependencies are installed:
 
 ## Run the Preprocessing Script  
 
-Before running, please extract the following files:  
+Before running, please change to the working directory and extract the following files:  
 
 - `steam_data/user_game.txt.zip`  
 - `data_exist/social_score_wi_ci_0.75/social_score_20.zip`  
