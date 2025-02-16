@@ -25,6 +25,7 @@ wi_array = np.load(wi_path)
 user_type_bool = np.where(user_type_pct_cnt != 0, 1, user_type_pct_cnt)
 
 def cal_social_score(k:int):
+    
     social_score_mat = []
     path_mat = os.path.join(base_dir, "data_exist/social_score_wi_ci_0.75/social_score_20.pkl")
     if os.path.exists(path_mat): 
