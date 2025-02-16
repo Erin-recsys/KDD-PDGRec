@@ -6,7 +6,7 @@ import dgl.function as fn
 import dgl.nn as dglnn
 from dgl.nn.pytorch.conv import GraphConv, GATConv, SAGEConv
 import torch.nn.functional as F
-
+#dn:denoised
 import os
 class Proposed_model(nn.Module):
     def __init__(self, args, graph, graph_item, graph_social,device, gamma=80, ablation=False):
