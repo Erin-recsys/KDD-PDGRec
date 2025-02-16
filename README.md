@@ -19,6 +19,10 @@ Ensure the following dependencies are installed:
 - Other required libraries
 
 ## Run the preprocessing script
+0.Run main.py first to get initial data 
+```bash
+python main.py
+```
 1. Get social score
 ```bash
 python PDGRec/utils/get_ut_preference.py
