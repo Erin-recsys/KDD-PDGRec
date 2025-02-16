@@ -62,9 +62,9 @@ class Dataloader_item_graph(DGLDataset):
             graph_item=dgl.heterograph(graph_data_item)
 
             self.graph_item=graph_item
-            dgl.save_graphs(path_graph_item,[self.graph_item])#
+            dgl.save_graphs(path_graph_item,[self.graph_item])
 
-        '''graph 2'''
+        
 
 
 
