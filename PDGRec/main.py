@@ -23,7 +23,7 @@ from models.Predictor import Predictor
 import pickle
 import torch.nn.functional as F
 import time
-
+from PDGRec.utils.Get_CI_DI_Weight import get_weight
 
 ls_5 = []
 ls_10 = []
@@ -125,7 +125,7 @@ if __name__ == '__main__':
     else:
         device = torch.device(f"cuda:{args.gpu}")
 
-    path = "/PDGRec/steam_data"
+    path = "./steam_data"
 
     user_id_path = path + '/users.txt'
     app_id_path = path + '/app_id.txt'
@@ -194,11 +194,8 @@ if __name__ == '__main__':
         score_neg = predictor(graph_neg, h, ('user','play','game'))
         loss_pre = loss
 
-        #score_neg_reweight = score_neg * (score_neg.sigmoid()*args.K)
-        #loss =  (-((score - score_neg_reweight).sigmoid().clamp(min=1e-8, max=1-1e-8).log())).sum()
-
-        eps=1e-15
-        loss = -torch.sum(torch.log(torch.sigmoid(score - score_neg)+eps))
+        score_neg_reweight = score_neg * (1 / (1 + torch.exp(-score_neg*args.balance)) * args.K)
+        loss =  (-((score - score_neg_reweight).sigmoid().clamp(min=1e-8, max=1-1e-8).log())).sum()
 
         loss = loss.to(device)
         total_loss=loss+ssloss_value*args.ssl_loss_weight
@@ -234,4 +231,3 @@ if __name__ == '__main__':
     logging.info(test_result)
 
     torch.save(model, path_model)
-
