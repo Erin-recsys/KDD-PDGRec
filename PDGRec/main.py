@@ -23,7 +23,7 @@ from models.Predictor import Predictor
 import pickle
 import torch.nn.functional as F
 import time
-from utils.Get_Weight import get_weight
+
 
 ls_5 = []
 ls_10 = []
