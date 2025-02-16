@@ -28,4 +28,7 @@ dataloader = Dataloader_steam_filtered(args,
 
 
 print("Getting denoised graph...")
-denoised_graph = dataloader.Get_Contrast_views(dataloader.graph)
+#dn:denoised
+denoised_graph = dataloader.Get_dn_views(dataloader.graph)
+
+
