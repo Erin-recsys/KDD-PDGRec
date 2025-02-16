@@ -11,6 +11,13 @@ def parse_args():
     parser.add_argument('--ssl_loss_weight', default=10 , type=float,
                     help='Weight for SSL loss ')
     
+    parser.add_argument('--balance', default=0, type=float,
+                    help='hyper-parameter parameter for balance')#1 for accuracy, 0 for diversity and balance
+    parser.add_argument('--K', default = 2, type = float,
+                    help = 'hyper-parameter for negative score reweighting')#6.5 for accuracy, 2 for diversity and balance
+    parser.add_argument('--use_other', default=1, type=float,
+                    help='Whether to add other aggregation.1 for yes, 0 for no')#0 for accuracy, 1 for diversity and balance
+    
     parser.add_argument('--weight_CI', default=0.3, type=float,
                     help='Weight for CI ')
     parser.add_argument('--weight_DI', default=0.7, type=float,
@@ -41,8 +48,6 @@ def parse_args():
                         help = '-1 for cpu, 0 for gpu:0')
     parser.add_argument('--k', default = [5,10,20], type = list,
                         help = 'negative sampler number for each node')
-    parser.add_argument('--K', default = 6.5, type = float,
-                        help = 'hyper-parameter for negative score reweighting')
     parser.add_argument('--gamma', default=80.0, type=float,
                         help='hyper-parameter for aggregation weight')
     parser.add_argument('--layers_and', default=2, type=int,
