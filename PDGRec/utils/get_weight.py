@@ -59,3 +59,4 @@ wi_array = get_wi()
 wi_path = os.path.join(base_dir, "data_exist/wi_array.npy")
 np.save(wi_path, wi_array)
 print(f"saved in {wi_path}")
+
