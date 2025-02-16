@@ -34,13 +34,13 @@ def get_weight(fixed_value):
     torch.save(noise_weights, save_path + "weight_noise_edge.pth")
 
 
-    print("\nProcessing contrast graph...")
-    path = "./data_exist/contrast_graph.bin"
+    print("\nProcessing dn graph...")
+    path = "./data_exist/dn_graph.bin"
     graph = dgl.load_graphs(path)[0]
     graph = graph[0]
   
-    print("Contrast graph edge types:", graph.etypes)
-    print("Contrast graph canonical edge types:", graph.canonical_etypes)
+    print("dn graph edge types:", graph.etypes)
+    print("dn graph canonical edge types:", graph.canonical_etypes)
  
     dn_edge_weights = graph.edges['play'].data['percentile']
     dn_edge_weights = dn_edge_weights + fixed_value
@@ -49,8 +49,8 @@ def get_weight(fixed_value):
     dn_friend_of_weights_CI = graph.edges['friend of'].data['CI']
 
  
-    print("\nLoading contrast graph with noise weights...")
-    dn_noise_path = "./data_exist/contrast_graph_with_weights.bin"
+    print("\nLoading dn graph with noise weights...")
+    dn_noise_path = "./data_exist/dn_graph_with_weights.bin"
     dn_noise_graph = dgl.load_graphs(dn_noise_path)[0]
     dn_noise_graph = dn_noise_graph[0]
     
@@ -71,7 +71,7 @@ def get_weight(fixed_value):
     print(f"Friend of edges (CI): count={len(friend_of_weights_CI)}, mean={friend_of_weights_CI.mean():.4f}")
     print(f"Noise weights: count={len(noise_weights)}, mean={noise_weights.mean():.4f}")
     
-    print("\nContrast graph:")
+    print("\ndn graph:")
     print(f"Play edges: count={len(dn_edge_weights)}, mean={dn_edge_weights.mean():.4f}")
     print(f"Friend of edges (DI): count={len(dn_friend_of_weights_DI)}, mean={dn_friend_of_weights_DI.mean():.4f}")
     print(f"Friend of edges (CI): count={len(dn_friend_of_weights_CI)}, mean={dn_friend_of_weights_CI.mean():.4f}")
@@ -81,6 +81,8 @@ def get_weight(fixed_value):
 
 if __name__ == "__main__":
     get_weight(0)
+
+
 
 
 
