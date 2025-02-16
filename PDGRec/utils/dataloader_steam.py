@@ -531,40 +531,40 @@ class Dataloader_steam_filtered(DGLDataset):
                 pickle.dump(dic,f)
             return dic
 
-    def Get_Contrast_views(self, graph):
+    def Get_dn_views(self, graph):
        
-        save_dir = '/PDGRec/data_exist'
-        contrast_graph_path = os.path.join(save_dir, f"contrast_graph.bin")
+        save_dir = './data_exist'
+        dn_graph_path = os.path.join(save_dir, f"dn_graph.bin")
         
         
-        if os.path.exists(contrast_graph_path):
+        if os.path.exists(dn_graph_path):
             try:
-                contrast_graph, _ = dgl.load_graphs(contrast_graph_path)
-                logging.info(f"Loaded existing contrast graph from {contrast_graph_path}")
-                return contrast_graph[0]
+                dn_graph, _ = dgl.load_graphs(dn_graph_path)
+                logging.info(f"Loaded existing dn graph from {dn_graph_path}")
+                return dn_graph[0]
             except Exception as e:
                 logging.warning(f"Failed to load existing graph: {e}. Rebuilding graph...")
         
         torch.cuda.empty_cache()
         device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
-        contrast_graph = graph.clone()
-        contrast_graph = contrast_graph.to(device)
+        dn_graph = graph.clone()
+        dn_graph = dn_graph.to(device)
         
-        src = contrast_graph.edges(etype='play')[0].to(device)
-        dst = contrast_graph.edges(etype='play')[1].to(device)
-        times = contrast_graph.edges['play'].data['percentile'].to(device).float()
+        src = dn_graph.edges(etype='play')[0].to(device)
+        dst = dn_graph.edges(etype='play')[1].to(device)
+        times = dn_graph.edges['play'].data['percentile'].to(device).float()
         
-        num_edges = contrast_graph.num_edges('play')
-        contrast_graph.edges['play'].data['noisy'] = torch.zeros(num_edges, dtype=torch.bool, device=device)
-        contrast_graph.edges['played by'].data['noisy'] = torch.zeros(num_edges, dtype=torch.bool, device=device)
+        num_edges = dn_graph.num_edges('play')
+        dn_graph.edges['play'].data['noisy'] = torch.zeros(num_edges, dtype=torch.bool, device=device)
+        dn_graph.edges['played by'].data['noisy'] = torch.zeros(num_edges, dtype=torch.bool, device=device)
         
         unique_users = torch.unique(src).to(device)
         batch_size = 1024
         
         
-        a = 0.3  
-        b = 0.4  
-        c = 0.3  
+        a = 1/3  
+        b = 1/3
+        c = 1/3 
         
         logging.info(f"Processing {len(unique_users)} users")
         
@@ -612,9 +612,9 @@ class Dataloader_steam_filtered(DGLDataset):
             first_term = 1 - valid_times
             
             
-            ranks = len(valid_times) - torch.argsort(torch.argsort(valid_times, dim=0), dim=0)
-            normalized_ranks = (ranks - 1).float() / (len(valid_times) - 1)
-            
+            ranks = torch.argsort(torch.argsort(valid_times, dim=0), dim=0)
+            normalized_ranks = (ranks).float() / (len(valid_times) - 1)
+            normalized_ranks=1-normalized_ranks
             
             min_skew = -4.0092
             max_skew = 2.7554
@@ -629,36 +629,36 @@ class Dataloader_steam_filtered(DGLDataset):
             noise_mask = (probs >= 0.4) & valid_user_masks
             if noise_mask.any():
                 edge_indices = torch.nonzero(batch_mask)[noise_mask.any(1)]
-                contrast_graph.edges['play'].data['noisy'][edge_indices] = True
-                contrast_graph.edges['played by'].data['noisy'][edge_indices] = True
+                dn_graph.edges['play'].data['noisy'][edge_indices] = True
+                dn_graph.edges['played by'].data['noisy'][edge_indices] = True
         
         
-        noise_edges_play = torch.nonzero(contrast_graph.edges['play'].data['noisy']).squeeze()
-        noise_edges_played_by = torch.nonzero(contrast_graph.edges['played by'].data['noisy']).squeeze()
+        noise_edges_play = torch.nonzero(dn_graph.edges['play'].data['noisy']).squeeze()
+        noise_edges_played_by = torch.nonzero(dn_graph.edges['played by'].data['noisy']).squeeze()
         
         if len(noise_edges_play.shape) > 0:
-            contrast_graph.remove_edges(noise_edges_play, etype='play')
+            dn_graph.remove_edges(noise_edges_play, etype='play')
             logging.info(f"Removed {len(noise_edges_play)} play edges")
         
         if len(noise_edges_played_by.shape) > 0:
-            contrast_graph.remove_edges(noise_edges_played_by, etype='played by')
+            dn_graph.remove_edges(noise_edges_played_by, etype='played by')
             logging.info(f"Removed {len(noise_edges_played_by)} played by edges")
         
         
         try:
             os.makedirs(save_dir, exist_ok=True)
-            contrast_graph = contrast_graph.cpu()
-            dgl.save_graphs(contrast_graph_path, [contrast_graph])
-            logging.info(f"Successfully saved contrast graph to {contrast_graph_path}")
-            contrast_graph = contrast_graph.to(device)
+            dn_graph = dn_graph.cpu()
+            dgl.save_graphs(dn_graph_path, [dn_graph])
+            logging.info(f"Successfully saved dn graph to {dn_graph_path}")
+            dn_graph = dn_graph.to(device)
         except Exception as e:
-            logging.error(f"Failed to save contrast graph: {e}")
+            logging.error(f"Failed to save dn graph: {e}")
             if isinstance(e, PermissionError):
                 logging.error(f"Permission denied. Please check if you have write access to {save_dir}")
         finally:
             torch.cuda.empty_cache()
         
-        return contrast_graph
+        return dn_graph
 
 
     def get_social_score(self):
@@ -688,7 +688,7 @@ class Dataloader_steam_filtered(DGLDataset):
 
 
     def process(self):
-        logging.info("reading genre,developer,publisher info...")
+        logging.info("reading genre info...")
         self.genre_mapping = self.read_game_genre_mapping(self.genre_path)
         self.genre = self.game_genre_inter(self.genre_mapping)
         logging.info("reading genre,social score info...")
@@ -737,3 +737,4 @@ class Dataloader_steam_filtered(DGLDataset):
 
     def ceshi(self):
         print(self.genre_mapping)
+
