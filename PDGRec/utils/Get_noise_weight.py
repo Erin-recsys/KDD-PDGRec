@@ -130,20 +130,27 @@ def add_user_type_edges(graph):
     return new_graph
 
 def process_and_save_graph(input_path, output_path):
-
-
+   
+    if os.path.exists(output_path):
+        print(f"File already exists: {output_path}")
+        print("Skipping graph processing...")
+        return
+        
+    
+    print(f"Processing graph from {input_path}")
     g = dgl.load_graphs(input_path)[0][0]
     
-
     new_g = add_user_type_edges(g)
+   
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     
-
     dgl.save_graphs(output_path, [new_g])
+    print(f"Graph saved to {output_path}")
     
 
-input_path = "/PDGRec/data_exist/graph.bin"
-output_path = "/PDGRec/data_exist/graph_with_weights.bin"
+input_path = "./data_exist/graph.bin"
+output_path = "./data_exist/graph_with_weights.bin"
 process_and_save_graph(input_path, output_path)
-contrast_input_path = "/PDGRec/data_exist/contrast_graph.bin"
-contrast_output_path = "/PDGRec/data_exist/contrast_graph_with_weights.bin"
-process_and_save_graph(contrast_input_path, contrast_output_path)
+dn_input_path = "./data_exist/dn_graph.bin"
+dn_output_path = "./data_exist/dn_graph_with_weights.bin"
+process_and_save_graph(dn_input_path, dn_output_path)
