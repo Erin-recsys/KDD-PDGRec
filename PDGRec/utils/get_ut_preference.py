@@ -4,7 +4,7 @@ import pickle
 import os
 import logging
 import numpy as np
-
+from dataloader_steam import Dataloader_steam_filtered
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  
 path = os.path.join(base_dir, "data_exist")
 user_num = 60742
@@ -22,21 +22,46 @@ def get_ut_preference():
         with open(path_dic,"rb") as f:
             dic_user_game = pickle.load(f)
         print('tensor_user_game example:',tensor_user_game[:5])
-        # return tensor_user_game, dic_user_game
-    else: 
-        print('user_game data path not exists!')
+    else:
+        
+        dl = Dataloader_steam_filtered.__new__(Dataloader_steam_filtered)
+        
+        dl.user_id_path = "./steam_data/users.txt"
+        dl.app_id_path = "./steam_data/app_id.txt"
+        dl.genre_path = "./steam_data/Games_Genres.txt"
+        dl.train_game_path = "./steam_data/train_game.txt"
+        dl.train_time_path = "./steam_data/train_time.txt"
+        
+        
+        dl.user_id_mapping = dl.read_user_id_mapping(dl.user_id_path)
+        dl.app_id_mapping = dl.read_app_id_mapping(dl.app_id_path)
+        
+        
+        tensor_user_game, dic_user_game = dl.read_play_time_rank(dl.train_game_path, dl.train_time_path)
+
         
     user_game = tensor_user_game.numpy()
 
    
+    
     path_game_genre_mapping = os.path.join(base_dir, "data_exist/game_genre_mapping.pkl")
     if os.path.exists(path_game_genre_mapping):
         with open(path_game_genre_mapping, 'rb') as f:
             game_type_mapping = pickle.load(f)
-    else: 
-        print('game_type data path not exists!')
+    else:
+        dl = Dataloader_steam_filtered.__new__(Dataloader_steam_filtered)
+        dl.app_id_mapping = dl.read_app_id_mapping("./steam_data/app_id.txt")
+        game_type_mapping = dl.read_game_genre_mapping("./steam_data/Games_Genres.txt")
         
-
+   
+    path_game_genre_inter = os.path.join(base_dir, "data_exist/game_genre_inter.pkl")
+    if not os.path.exists(path_game_genre_inter):
+        game_type_inter = []
+        for key in game_type_mapping.keys():
+            for type_key in game_type_mapping[key]:
+                game_type_inter.append([key, type_key])
+        with open(path_game_genre_inter, 'wb') as f:
+            pickle.dump(game_type_inter, f)
     shape = (user_num, type_num)
 
     user_type_pct_sum = np.zeros(shape, dtype = float)
