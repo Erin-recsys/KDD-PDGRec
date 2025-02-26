@@ -27,6 +27,7 @@ Before running, please change to the working directory and extract the following
 
 ### 1. Get Social Score  
 We have already prepared the social score data `social_score_20.pkl` in advance, which you can use directly for step 2 without needing to recalculate it.
+
 **Option 1: Use Preprocessed Data (Recommended)**  
 - Directly use the extracted `social_score_20.pkl`  
 
