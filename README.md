@@ -26,7 +26,7 @@ Before running, please change to the working directory and extract the following
 - `data_exist/social_score_wi_ci_0.75/social_score_20.zip`  
 
 ### 1. Get Social Score  
-
+We have already prepared the social score data `social_score_20.pkl` in advance, which you can use directly for step 2 without needing to recalculate it.
 **Option 1: Use Preprocessed Data (Recommended)**  
 - Directly use the extracted `social_score_20.pkl`  
 
@@ -38,6 +38,7 @@ python PDGRec/utils/cal_social_score.py
 ```
 
 ### 2.Get Denoised Graph and Calculate Weights
+After placing the prepared `social_score_20.pkl` file in the `data_exist/social_score_wi_ci_0.75/` directory, proceed with the following steps to generate the denoised graph and calculate the necessary weights.
 ```bash
 python PDGRec/utils/Get_denoised_graph.py  
 python PDGRec/utils/Get_noise_weight.py  
