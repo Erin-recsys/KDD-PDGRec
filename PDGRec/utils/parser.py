@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument('--weight_DI', default=0.7, type=float,
                     help='Weight for DI ')
   
-    parser.add_argument('--weight_self', default=0.3, type=float,
+    parser.add_argument('--weight_self', default=0.3, type=float,#1 for acc
                     help='Weight for self ')    
     parser.add_argument('--weight_noise', default=0.7, type=float, 
                     help='Weight for noise weight')
