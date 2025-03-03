@@ -4,8 +4,8 @@ import os
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
-from utils.dataloader_steam import Dataloader_steam_filtered
-from utils.parser import parse_args
+from dataloader_steam import Dataloader_steam_filtered
+from parser import parse_args
 
 args = parse_args()
 
