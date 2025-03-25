@@ -29,8 +29,8 @@ Before running, please change to the working directory and extract the following
 After placing the prepared `social_score_20.pkl` file in the `data_exist/social_score_wi_ci_0.75/` directory, proceed with the following steps to generate the denoised graph and calculate the necessary weights.
 ```bash
 python PDGRec/utils/Get_denoised_graph.py  
-python PDGRec/utils/Get_noise_weight.py  
-python PDGRec/utils/Get_CI_DI_Weight.py  
+python PDGRec/utils/Get_noise_graph.py  
+python PDGRec/utils/Get_CI_DI_noise_weight.py  
 ```
 ## Model Training
 ```bash
